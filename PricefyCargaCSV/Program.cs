@@ -8,118 +8,106 @@ using System.Transactions;
 namespace ReadingAndSavingFileJSON
 {
     class Program
-    {
+    {       
         static StringBuilder sb = new StringBuilder();
         static void Main(string[] args)
         {
             DateTime startTempo = DateTime.Now;
-            string strConexao = @"Data Source=GTI-15\PRICEFY;Initial Catalog=pricefy;Integrated Security=True;";
-            //string strConexao = @"Data Source=JAIR\SQLEXPRESS; Initial Catalog=pricefy; Integrated Security=true;";            
-            string arquivoCSVtPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName + @"\data\ExemploPriceFy.csv";            
+            
+            string strConexao = @"Data Source=NOTEBOOK\PRICEFY; Initial Catalog=pricefy; Integrated Security=true;";            
+            string arquivoCSVtPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName + @"\data\ExemploPriceFy.csv";
 
-            Console.WriteLine("");            
+            Console.WriteLine("");
             Console.WriteLine("                  IMPORTACAO ARQUIVO .CSV - PRICEFY ");
             Console.WriteLine("=======================================================================");
             Console.WriteLine("");
             Console.WriteLine("");
-            Console.WriteLine("[1/4] INICIANDO PROCESSO DE IMPORTACAO");            
+            Console.WriteLine("[1/4] INICIANDO PROCESSO DE IMPORTACAO");
             Console.WriteLine("-----------------------------------------------------------------------");
             var arquivoLocalizado = File.Exists(arquivoCSVtPath);
             Console.WriteLine("Situacao da arquivo.......: " + (arquivoLocalizado ? "Lendo..." : "Não existente"));
             var linhas = arquivoLocalizado ? File.ReadAllLines(arquivoCSVtPath) : new String[0];
             Console.WriteLine("Consistencia do arquivo...: " + (linhas.Count() > 0 ? "Válido OK" : "Vazio/inválido"));
-            Console.WriteLine("Tempo de processamento....: {0} segundos", Math.Round( DateTime.Now.Subtract(startTempo).TotalSeconds) );
-            Console.WriteLine("Linhas do arquivos........: {0}", linhas.Count() -1);
+            Console.WriteLine("Tempo de processamento....: " + (Math.Round(DateTime.Now.Subtract(startTempo).TotalSeconds) > 60 ? Math.Round((DateTime.Now.Subtract(startTempo).TotalSeconds) / 60) + " minutos" : Math.Round(DateTime.Now.Subtract(startTempo).TotalSeconds) +" segundos"));
+            Console.WriteLine("Linhas do arquivos........: " + (linhas.Count() - 1));
             if (linhas.Count() == 0 || !arquivoLocalizado)
             {
                 Console.ReadKey();
                 return;
             }
-           
-            using (var transactionScope = new TransactionScope())
+            using (var conn = new SqlConnection(strConexao))
             {
-                using (SqlConnection conn = new SqlConnection(strConexao))
+                conn.Open();
+                using (var cmd = new SqlCommand())
                 {
-                    using (SqlCommand cmd = conn.CreateCommand())
+                    cmd.Connection     = conn;
+                    cmd.CommandTimeout = 3000;
+                    try
                     {
-                        cmd.CommandTimeout = TimeSpan.FromMinutes(300).Seconds;
+                        Console.WriteLine("Conectando bade de dados..: iniciando...");
+                        Console.WriteLine("Conexao...................: OK");
                         try
                         {
-                            Console.WriteLine("Conectando bade de dados..: iniciando...");
-                            conn.Open();
-                            Console.WriteLine("Conexao...................: OK");
-                            try
-                            {
-                                Console.WriteLine("-----------------------------------------------------------------------");
-                                Console.WriteLine("");
-                                Console.WriteLine("[2/4]  QUESTIONÁRIO");
-                                Console.Write("-----------------------------------------------------------------------");
-                                Console.Write("\nINFORME O DELIMITADOR DOS CAMPOS(<enter> default ';')........: ");
-                                 
-                                var delimitadorCampos =  Console.ReadLine();
-                                delimitadorCampos = delimitadorCampos == "" ? ";" : delimitadorCampos;
-                                Console.Write("Opcao informada...........: '" + delimitadorCampos + "'");
+                            Console.WriteLine("-----------------------------------------------------------------------");
+                            Console.WriteLine("");
+                            Console.WriteLine("[2/4]  QUESTIONÁRIO");
+                            Console.Write("-----------------------------------------------------------------------");
+                            Console.Write("\nINFORME O DELIMITADOR DOS CAMPOS(<enter> default ';')........: ");
 
-                                var campos = linhas[0].Split( Convert.ToChar( delimitadorCampos ));
+                            var delimitadorCampos = Console.ReadLine();
+                            delimitadorCampos = delimitadorCampos == "" ? ";" : delimitadorCampos;
+                            Console.Write("Opcao informada...........: '" + delimitadorCampos + "'");
 
-                                Console.Write("\nINFORME A TABELA MESTRE(<enter> default: TbCargaCSV).........: ");
-                                var tabelaMestre      = Console.ReadLine();
-                                tabelaMestre = tabelaMestre == "" ? "TbCargaCSV" : tabelaMestre;
-                                Console.Write("Opcao informada...........: '" + tabelaMestre + "'");                                
-                                Console.Write("\nINFORME A TABELA DETALHE(<enter> default: TbCargaDetalheCSV).: ");
-                                var tabelaDetalhe = Console.ReadLine(); ;
-                                tabelaDetalhe = tabelaDetalhe == "" ? "TbCargaDetalheCSV" : tabelaDetalhe;
-                                Console.WriteLine("Opcao imformada.......: '" + tabelaDetalhe + "'");
-                                Console.WriteLine("-----------------------------------------------------------------------");
-                                Console.WriteLine("");
-                               
-                                Console.WriteLine("[3/4]  REALIZANDO A LEITURA/IMPORTACAO .CSV");
-                                Console.WriteLine("-----------------------------------------------------------------------");
-                                Console.WriteLine("Preparacao do ambiente....: iniciando...");
-                                startTempo = DateTime.Now;                         
-                                // campos dinamicos da tabela
-                                PrepararTabelasCarga(campos, cmd, tabelaMestre, tabelaDetalhe);
-                                Console.WriteLine("Ambiente..................: OK");                                
-                                Console.WriteLine("Realizando a carga agora..: iniciando...");
-                                string[] resultado = RealizarCarga(arquivoCSVtPath, cmd, tabelaMestre, tabelaDetalhe, delimitadorCampos);
-                                transactionScope.Complete();
-                                Console.WriteLine("Carga/importação..........: OK");
-                                Console.WriteLine("-----------------------------------------------------------------------");
-                                Console.WriteLine("");
+                            
+                            Console.Write("\nINFORME A TABELA MESTRE(<enter> default: TbCargaCSV).........: ");
+                            var tabelaMestre = Console.ReadLine();
+                            tabelaMestre = tabelaMestre == "" ? "TbCargaCSV" : tabelaMestre;
+                            Console.Write("Opcao informada...........: '" + tabelaMestre + "'");
+                            Console.Write("\nINFORME A TABELA DETALHE(<enter> default: TbCargaDetalheCSV).: ");
+                            var tabelaDetalhe = Console.ReadLine();
+                            tabelaDetalhe = tabelaDetalhe == "" ? "TbCargaDetalheCSV" : tabelaDetalhe;
+                            Console.WriteLine("Opcao imformada.......: '" + tabelaDetalhe + "'");
+                            Console.WriteLine("-----------------------------------------------------------------------");
+                            Console.WriteLine("");
+                            Console.WriteLine("[3/4]  REALIZANDO A LEITURA/IMPORTACAO .CSV");
+                            Console.WriteLine("-----------------------------------------------------------------------");
+                            Console.WriteLine("Preparacao do ambiente....: iniciando...");
+                            startTempo = DateTime.Now;
 
-                                Console.WriteLine("[4/4]  RESUMO DA IMPORTAÇÃO - FINAL");
-                                Console.WriteLine("-----------------------------------------------------------------------");
-                                Console.WriteLine("Nome do aquivo............: {0}", resultado[0]);
-                                Console.WriteLine("ID(Código da carga).......: {0}", resultado[1]);
-                                Console.WriteLine("Linhas inseridas..........: {0}", resultado[2]);
-                                Console.WriteLine("Tempo de processamento....: {0} segundos", Math.Round(DateTime.Now.Subtract(startTempo).TotalSeconds));
-                                Console.WriteLine("");
-                                Console.WriteLine("");
-                                Console.WriteLine("=======================================================================");
-                                Console.WriteLine("                       API - TESTE DA IMPORTACAO");
-                                Console.WriteLine("=======================================================================");
-                                Console.WriteLine("baseurl...................: http//localhost/api/carga");
-                                Console.WriteLine("id........................: Id da carga. Pode ser por carga especifica");
-                                Console.WriteLine("pagina....................: paginação especifica");
-                                Console.WriteLine("limite....................: limite maximo de registro por pagina");
-                                Console.WriteLine("");
-                                Console.WriteLine("                           ### EXEMPLO ###");
-                                Console.WriteLine("http//localhost/api/importacao/paginacao?numeroPagina=1&LimitePagina=20");
-                                Console.WriteLine("-----------------------------------------------------------------------");
-                                Console.ReadKey();                                
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine("");
-                                Console.WriteLine("================================================");
-                                Console.WriteLine("            |        ERRO        |             ");
-                                Console.WriteLine(ex.Message);
-                                Console.WriteLine("================================================");
-                                Console.ReadKey();
-                            };
+                            // campos dinamicos da tabela
+                            var campos = linhas[0].Split(Convert.ToChar(delimitadorCampos));
+                            PrepararTabelasCarga(campos, cmd, tabelaMestre, tabelaDetalhe);
+                            Console.WriteLine("Ambiente..................: OK");
+                            Console.WriteLine("Realizando a carga agora..: iniciando...");
+
+                            var resultado = RealizarCarga(arquivoCSVtPath, cmd, tabelaMestre, tabelaDetalhe, delimitadorCampos);
+                            Console.WriteLine("Carga/importação..........: OK");
+                            Console.WriteLine("-----------------------------------------------------------------------");
+                            Console.WriteLine("");
+                            Console.WriteLine("[4/4]  RESUMO DA IMPORTAÇÃO - FINAL");
+                            Console.WriteLine("-----------------------------------------------------------------------");
+                            Console.WriteLine("Nome do aquivo............: {0}", resultado[0]);
+                            Console.WriteLine("ID(Código da carga).......: {0}", resultado[1]);
+                            Console.WriteLine("Linhas inseridas..........: {0}", (int)resultado[2] - 1);
+                            Console.WriteLine("Tempo de processamento....: " + (Math.Round(DateTime.Now.Subtract(startTempo).TotalSeconds) > 60 ? Math.Round((DateTime.Now.Subtract(startTempo).TotalSeconds) / 60) + " minutos" : Math.Round(DateTime.Now.Subtract(startTempo).TotalSeconds) + " segundos"));
+                            Console.WriteLine("");
+                            Console.WriteLine("");
+                            Console.WriteLine("=======================================================================");
+                            Console.WriteLine("                       API - TESTE DA IMPORTACAO");
+                            Console.WriteLine("=======================================================================");
+                            Console.WriteLine("baseurl...................: http//localhost:{porta}/api/importacao/paginacao");
+                            //Console.WriteLine("id........................: Id da carga. Pode ser por carga especifica");
+                            Console.WriteLine("numeroPagina..............: paginação especifica");
+                            Console.WriteLine("limitePagina..............: limite maximo de registro por pagina");
+                            Console.WriteLine("");
+                            Console.WriteLine("");
+                            Console.WriteLine("                           ### EXEMPLO ###");
+                            Console.WriteLine("http//localhost:{porta}/api/importacao/paginacao?numeroPagina=1&LimitePagina=20");
+                            Console.WriteLine("-----------------------------------------------------------------------");
+                            Console.ReadKey();
                         }
                         catch (Exception ex)
-                        {
+                        {                            
                             Console.WriteLine("");
                             Console.WriteLine("================================================");
                             Console.WriteLine("            |        ERRO        |             ");
@@ -128,6 +116,15 @@ namespace ReadingAndSavingFileJSON
                             Console.ReadKey();
                         };
                     }
+                    catch (Exception ex)
+                    {                       
+                        Console.WriteLine("");
+                        Console.WriteLine("================================================");
+                        Console.WriteLine("            |        ERRO        |             ");
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine("================================================");
+                        Console.ReadKey();
+                    };
                 }
             }
         }
@@ -150,11 +147,16 @@ namespace ReadingAndSavingFileJSON
             System.Text.RegularExpressions.Regex reg = new System.Text.RegularExpressions.Regex("[*'\",&#^@´`-]");
             StringBuilder sbAuxCampos = new StringBuilder();
             int i = 0;
+            string campoIndice = "";
             foreach (var campo in campos)
             {
                 i++;
                 var campoSemCharEspecial = reg.Replace(campo.Replace(" ","_"), string.Empty);
-                sbAuxCampos.Append((i==1 ? " " : ", ") + campoSemCharEspecial + " VARCHAR(255) ");
+                sbAuxCampos.Append((i==1 ? " " : ", ") + campoSemCharEspecial + " NVARCHAR(100) ");
+                if (i<=2)
+                {
+                    campoIndice += campoSemCharEspecial + " ASC " + (i == 1 ? "," : "");
+                }               
             };
             sb.Clear();
             sb.Append("IF OBJECT_ID('dbo." + tabelaDetalhe + "', 'U') IS NOT NULL" );
@@ -165,11 +167,13 @@ namespace ReadingAndSavingFileJSON
           //sb.Append("     ,id_carga   INT"                                   );
             sb.Append(      sbAuxCampos.ToString()                             );
             sb.Append("   );"                                                  );
+            sb.Append("   CREATE NONCLUSTERED INDEX[idx_pricefy] ON [" + tabelaDetalhe + "]");
+            sb.Append("   (" + campoIndice  + ");");
             cmd.CommandText = sb.ToString();
             cmd.ExecuteNonQuery();
         }
 
-        static string[] RealizarCarga(string arquivoCSVPath, SqlCommand cmd, string tabelaMestre, string tabelaDetalhe, string delimitadorCampos)
+        static object[] RealizarCarga(string arquivoCSVPath, SqlCommand cmd, string tabelaMestre, string tabelaDetalhe, string delimitadorCampos)
         {
             // realizando a carga e removendo o primeiro registro(este é também o nome dos campos
             sb.Clear();
@@ -181,8 +185,8 @@ namespace ReadingAndSavingFileJSON
             int linhasAfetadas = cmd.ExecuteNonQuery();
 
             string nomeArquivo = Path.GetFileName(arquivoCSVPath);
-            // 1 - id       poderá ser automatico
-            // 2 - dt_carga poderá ser automatica
+            // 1 - id       é automatico
+            // 2 - dt_carga é automatica
             sb.Clear();
             sb.Append(" INSERT INTO [dbo].[" + tabelaMestre + "]"     );
             sb.Append("             ( nm_arquivo"           );
@@ -190,7 +194,7 @@ namespace ReadingAndSavingFileJSON
             sb.Append("             )"                      );
             sb.Append("      OUTPUT INSERTED.ID_CARGA"      );
             sb.Append("      VALUES ('" + nomeArquivo + "'" );
-            sb.Append("              ," + linhasAfetadas    );
+            sb.Append("              ," + linhasAfetadas.ToString() );
             sb.Append("             )"                      );
             sb.Append("   ");
             cmd.CommandText = sb.ToString();
@@ -202,7 +206,7 @@ namespace ReadingAndSavingFileJSON
             //cmd.CommandText = sb.ToString();
             //cmd.ExecuteNonQuery();
 
-            string[] result = { nomeArquivo, id_carga.ToString(), (linhasAfetadas - 1).ToString() };
+            object[] result = { nomeArquivo, id_carga.ToString(), linhasAfetadas - 1 };
             
             return result;
         }    
