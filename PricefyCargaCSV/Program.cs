@@ -12,9 +12,8 @@ namespace ReadingAndSavingFileJSON
         static StringBuilder sb = new StringBuilder();
         static void Main(string[] args)
         {
-            DateTime startTempo = DateTime.Now;
-            string strConexao = @"Data Source=GTI-15\PRICEFY;Initial Catalog=pricefy;Integrated Security=True;";
-            //string strConexao = @"Data Source=NOTEBOOK\PRICEFY; Initial Catalog=pricefy; Integrated Security=true;";            
+            DateTime startTempo = DateTime.Now;            
+            string strConexao = @"Data Source=NOTEBOOK\PRICEFY; Initial Catalog=pricefy; Integrated Security=true;";            
             string arquivoCSVtPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName + @"\data\ExemploPriceFy.csv";
 
             Console.WriteLine("");
