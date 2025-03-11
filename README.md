@@ -1,5 +1,5 @@
-# csharp-core3.0
-Exemplificação do uso do CSharp para importação de grandes arquivos em massa
+# csharp - Instruções gerai
+Exemplificação do uso do CSharp para importação de grandes volumes da dados em arquivos .csv
 
 ## Instruções gerais
 ## Api - recuperando JSON(paginação)
